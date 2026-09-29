@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Admin Login</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<div style="max-width:350px;margin:80px auto;padding:20px;border:1px solid #ddd;text-align:center" id="loginBox">
+<h2>Admin Login</h2>
+<input id="u" placeholder="Username" style="width:100%;padding:10px;margin:8px 0">
+<input id="p" type="password" placeholder="Password" style="width:100%;padding:10px;margin:8px 0">
+<button onclick="login()" style="width:100%;padding:10px;background:#111;color:#fff">Login</button>
+<p style="font-size:12px;color:#888;margin-top:10px">Username: glomski<br>Password: 1234</p>
+</div>
+
+<div style="max-width:400px;margin:20px auto;padding:20px;border:1px solid #ddd;display:none" id="adminBox">
+<h2>Add Product</h2>
+<input id="pName" placeholder="Product Name" style="width:100%;padding:10px;margin:5px 0">
+<input id="pPrice" placeholder="Price" type="number" style="width:100%;padding:10px;margin:5px 0">
+<input id="pDesc" placeholder="Description" style="width:100%;padding:10px;margin:5px 0">
+<button onclick="saveProduct()" style="width:100%;padding:10px;background:#111;color:#fff">Save Product</button>
+<a href="shop.html"><button style="width:100%;padding:10px;margin-top:10px">View Shop</button></a>
+<button onclick="logout()" style="margin-top:10px">Logout</button>
+</div>
+
+<script>
+function login(){
+let user=document.getElementById('u').value;
+let pass=document.getElementById('p').value;
+if(user==="glomski" && pass==="1234"){
+document.getElementById('loginBox').style.display='none';
+document.getElementById('adminBox').style.display='block';
+localStorage.setItem('isAdmin','true');
+}else{alert('Wrong! Use glomski / 1234');}
+}
+function logout(){localStorage.removeItem('isAdmin');location.reload();}
+function saveProduct(){
+let n=document.getElementById('pName').value;
+let pr=document.getElementById('pPrice').value;
+let d=document.getElementById('pDesc').value;
+if(!n||!pr)return alert('Add name and price');
+let p=JSON.parse(localStorage.getItem('glomski_products')||'[]');
+p.push({name:n,price:pr,desc:d});
+localStorage.setItem('glomski_products',JSON.stringify(p));
+alert('Saved!');document.getElementById('pName').value='';
+}
+if(localStorage.getItem('isAdmin')==='true'){
+document.getElementById('loginBox').style.display='none';
+document.getElementById('adminBox').style.display='block';
+}
+</script>
+</body>
+  </html>
