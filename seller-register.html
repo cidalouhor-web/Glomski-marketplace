@@ -1,0 +1,71 @@
+ html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Become Seller</title>
+<style>
+body { font-family: Arial; background: #f5f5f5; padding: 15px; }
+.box { max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 12px; }
+input { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #ddd; box-sizing: border-box; }
+.btn { width: 100%; padding: 14px; border: none; border-radius: 8px; font-weight: bold; margin-top: 10px; cursor: pointer; }
+</style>
+</head>
+<body>
+<div class="box">
+<h2>Become a Seller</h2>
+<p>Pay ₦2000 one-time, start selling. We take 10% per sale.</p>
+<input id="shopName" placeholder="Shop Name">
+<input id="fullName" placeholder="Full Name">
+<input id="email" placeholder="Email (same as login)">
+<input id="phone" placeholder="Phone">
+<input id="bank" placeholder="Bank Name">
+<input id="accountNo" placeholder="Account Number">
+<input id="accountName" placeholder="Account Name">
+<button class="btn" style="background:gold" onclick="paySellerFee()">Pay ₦2000 & Register</button>
+<p style="text-align:center"><a href="index.html">Back</a></p>
+</div>
+<script src="https://js.paystack.co/v1/inline.js"></script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+const firebaseConfig = {
+apiKey: "AIzaSyC_HDjcKbNMsQm6UqbM0zEdwJ1yljMzKVM",
+authDomain: "glomski-store.firebaseapp.com",
+projectId: "glomski-store",
+storageBucket: "glomski-store.firebasestorage.app",
+messagingSenderId: "610377053840",
+appId: "1:610377053840:web:bb7651bd461b6dc8c88a15"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+window.paySellerFee = function() {
+let email = document.getElementById('email').value;
+let shop = document.getElementById('shopName').value;
+if(!email ||!shop) { alert('Fill email and shop'); return; }
+let h = PaystackPop.setup({
+key: 'pk_live_19eafe7b373329fcca5c8990b0659c12893c9ddd',
+email: email,
+amount: 2000 * 100,
+ref: 'SELLER_' + Math.floor(Math.random() * 1000000000),
+callback: async function(r) {
+await addDoc(collection(db, "sellers_pending"), {
+shopName: shop,
+fullName: document.getElementById('fullName').value,
+email: email,
+phone: document.getElementById('phone').value,
+bank: document.getElementById('bank').value,
+accountNo: document.getElementById('accountNo').value,
+accountName: document.getElementById('accountName').value,
+ref: r.reference,
+status: 'pending',
+time: serverTimestamp()
+});
+alert('Paid! Wait for admin approval within 24hrs');
+location.href = 'index.html';
+}
+});
+h.openIframe();
+}
+</script>
+</body>
+</html>
