@@ -1,0 +1,64 @@
+html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Buyer Dashboard</title>
+<style>
+body { font-family: Arial; background: #f5f5f5; padding: 15px; }
+.box { max-width: 500px; margin: auto; }
+.card { background: white; padding: 18px; border-radius: 12px; margin-bottom: 12px; }
+.bal { background: black; color: white; padding: 20px; border-radius: 12px; text-align: center; }
+.bal h1 { color: gold; }
+.btn { width: 100%; padding: 12px; border: none; border-radius: 8px; font-weight: bold; margin-top: 8px; cursor: pointer; }
+input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ddd; box-sizing: border-box; }
+</style>
+</head>
+<body>
+<div class="box">
+<div class="bal"><p id="uname">Loading...</p><h1 id="ubal">₦0</h1><p>Wallet</p></div>
+<div class="card"><h3>Fund Wallet</h3><input id="amt" type="number" placeholder="Amount"><button class="btn" style="background:gold" onclick="fundWallet()">Fund with Paystack</button></div>
+<div class="card"><p id="uinfo"></p><a href="seller-register.html"><button class="btn" style="background:#eee">Become a Seller</button></a><a href="index.html"><button class="btn" style="background:black;color:white">Continue Shopping</button></a><button class="btn" style="background:#eee" onclick="logout()">Logout</button></div>
+</div>
+<script src="https://js.paystack.co/v1/inline.js"></script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+import { getFirestore, doc, getDoc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+const firebaseConfig = {
+apiKey: "AIzaSyC_HDjcKbNMsQm6UqbM0zEdwJ1yljMzKVM",
+authDomain: "glomski-store.firebaseapp.com",
+projectId: "glomski-store",
+storageBucket: "glomski-store.firebasestorage.app",
+messagingSenderId: "610377053840",
+appId: "1:610377053840:web:bb7651bd461b6dc8c88a15"
+};
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+let curData=null, curUid=null;
+onAuthStateChanged(auth, async (user) => {
+if(!user) { location.href='account.html'; return; }
+curUid=user.uid;
+let snap = await getDoc(doc(db, "users", user.uid));
+curData=snap.data();
+document.getElementById('uname').innerText='Welcome, ' + curData.name;
+document.getElementById('ubal').innerText='₦'+curData.balance.toLocaleString();
+document.getElementById('uinfo').innerText=curData.email;
+});
+window.fundWallet = function() {
+let amt=parseInt(document.getElementById('amt').value);
+let h=PaystackPop.setup({
+key: 'pk_live_19eafe7b373329fcca5c8990b0659c12893c9ddd',
+email: curData.email,
+amount: amt*100,
+callback: async function() {
+await updateDoc(doc(db, "users", curUid), { balance: increment(amt) });
+location.reload();
+}
+});
+h.openIframe();
+}
+window.logout = async function() { await signOut(auth); location.href='account.html'; }
+</script>
+</body>
+                                                                                           </html>
