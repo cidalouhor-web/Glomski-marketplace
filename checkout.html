@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Checkout</title>
+<style>
+body { font-family: Arial; background: #f5f5f5; padding: 15px; }
+.box { max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 12px; }
+input { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #ddd; box-sizing: border-box; }
+.btn { width: 100%; padding: 14px; border: none; border-radius: 8px; font-weight: bold; margin-top: 10px; cursor: pointer; }
+</style>
+</head>
+<body>
+<div class="box">
+<h2>Marketplace Checkout</h2>
+<div id="items"></div>
+<h3>Total: ₦<span id="gtotal">0</span></h3>
+<p><small>10% commission goes to Glomski Marketplace</small></p>
+<input id="name" placeholder="Full Name">
+<input id="phone" placeholder="Phone">
+<input id="address" placeholder="Delivery Address">
+<button class="btn" style="background:gold" onclick="payWithPaystack()">Pay with Paystack (Split to Sellers)</button>
+<button class="btn" style="background:black;color:white" onclick="payWithWallet()">Pay with Wallet</button>
+</div>
+<script src="https://js.paystack.co/v1/inline.js"></script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+import { getFirestore, doc, getDoc, updateDoc, increment, addDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+const firebaseConfig = {
+apiKey: "AIzaSyC_HDjcKbNMsQm6UqbM0zEdwJ1yljMzKVM",
+authDomain: "glomski-store.firebaseapp.com",
+projectId: "glomski-store",
+storageBucket: "glomski-store.firebasestorage.app",
+messagingSenderId: "610377053840",
+appId: "1:610377053840:web:bb7651bd461b6dc8c88a15"
+};
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+let cart = JSON.parse(localStorage.getItem('glomski_market_cart') || '{"total":0,"items":[]}');
+let curUser=null, curData=null;
+document.getElementById('gtotal').innerText = cart.total.toLocaleString();
+let html='';
+let sellersMap={};
+cart.items.forEach(it => {
+html+=`<div style="border-bottom:1px solid #eee;padding:8px;display:flex;justify-content:space-between"><span>${it.name}<br><small>${it.shopName}</small></span><span>₦${it.price}</span></div>`;
+if(!sellersMap[it.sellerId]) sellersMap[it.sellerId]=0;
+sellersMap[it.sellerId]+=it.price;
+});
+document.getElementById('items').innerHTML = html;
+onAuthStateChanged(auth, async (u) => {
+curUser=u;
+let s=await getDoc(doc(db, "users", u.uid));
+curData=s.data();
+document.getElementById('name').value=curData.name;
+});
+window.payWithPaystack = function() {
+let h=PaystackPop.setup({
+key: 'pk_live_19eafe7b373329fcca5c8990b0659c12893c9ddd',
+email: curData.email,
+amount: cart.total * 100,
+ref: 'MARKET_' + Math.floor(Math.random()*1000000000),
+callback: async function(r) {
+for (let sellerId in sellersMap) {
+let amount = sellersMap[sellerId];
+let sellerAmount = Math.floor(amount * 0.9);
+let commission = amount - sellerAmount;
+if(sellerId!= 'glomski') {
+await addDoc(collection(db, "orders"), {
+buyerId: curUser.uid,
+buyerName: curData.name,
+sellerId: sellerId,
+items: cart.items.filter(i=>i.sellerId==sellerId),
+total: amount,
+sellerAmount: sellerAmount,
+commission: commission,
+ref: r.reference,
+time: serverTimestamp(),
+status: 'paid'
+});
+let q = await getDoc(doc(db, "sellers", sellerId));
+if(q.exists()) {
+await updateDoc(doc(db, "sellers", sellerId), { balance: increment(sellerAmount) });
+}
+}
+}
+localStorage.removeItem('glomski_market_cart');
+alert('Payment success! Sellers have been credited 90%');
+location.href='dashboard.html';
+}
+});
+h.openIframe();
+}
+window.payWithWallet = async function() {
+if(curData.balance < cart.total) { alert('Insufficient wallet'); return; }
+await updateDoc(doc(db, "users", curUser.uid), { balance: increment(-cart.total) });
+for (let sellerId in sellersMap) {
+let amount = sellersMap[sellerId];
+let sellerAmount = Math.floor(amount * 0.9);
+await addDoc(collection(db, "orders"), {
+buyerId: curUser.uid,
+sellerId: sellerId,
+items: cart.items.filter(i=>i.sellerId==sellerId),
+total: amount,
+sellerAmount: sellerAmount,
+commission: amount - sellerAmount,
+time: serverTimestamp(),
+status: 'paid'
+});
+if(sellerId!= 'glomski') {
+await updateDoc(doc(db, "sellers", sellerId), { balance: increment(sellerAmount) });
+}
+}
+localStorage.removeItem('glomski_market_cart');
+location.href='dashboard.html';
+}
+</script>
+</body>
+  </html>
