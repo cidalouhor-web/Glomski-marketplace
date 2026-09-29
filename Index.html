@@ -1,0 +1,77 @@
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Glomski Marketplace - Buy & Sell</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+<h1>GLOMSKI MARKETPLACE</h1>
+<p>Buy & Sell - Phones • Gadgets • Perfumes • Clothes</p>
+<div id="topNav">
+<a href="account.html" id="acctLink" style="color:gold">Login</a> | <span id="userBal"></span>
+<a href="seller-register.html" style="background:gold;color:black;padding:8px 14px;border-radius:20px;text-decoration:none;font-weight:bold;margin-left:10px;">START SELLING</a>
+</div>
+<input type="text" id="search" placeholder="Search products or shop..." onkeyup="searchProducts()">
+<div id="cart">Cart: <span id="count">0</span> | ₦<span id="total">0</span></div>
+<div class="cats">
+<button onclick="filterProducts('all')">All</button>
+<button onclick="filterProducts('phones')">Phones</button>
+<button onclick="filterProducts('gadgets')">Gadgets</button>
+<button onclick="filterProducts('perfumes')">Perfumes</button>
+<button onclick="filterProducts('clothes')">Clothes</button>
+<button onclick="filterProducts('appliances')">Appliances</button>
+</div>
+</header>
+<section id="products">Loading marketplace...</section>
+<a id="whatsapp" href="#" onclick="orderWhatsApp()">Checkout</a>
+<script src="script.js"></script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+import { getFirestore, doc, getDoc, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+const firebaseConfig = {
+apiKey: "AIzaSyC_HDjcKbNMsQm6UqbM0zEdwJ1yljMzKVM",
+authDomain: "glomski-store.firebaseapp.com",
+projectId: "glomski-store",
+storageBucket: "glomski-store.firebasestorage.app",
+messagingSenderId: "610377053840",
+appId: "1:610377053840:web:bb7651bd461b6dc8c88a15"
+};
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+onAuthStateChanged(auth, async (user) => {
+if (user) {
+let snap = await getDoc(doc(db, "users", user.uid));
+if (snap.exists()) {
+let d = snap.data();
+document.getElementById('acctLink').innerText = d.name + ' | Dashboard';
+document.getElementById('acctLink').href = 'dashboard.html';
+document.getElementById('userBal').innerText = '₦' + d.balance.toLocaleString();
+}
+}
+});
+let container = document.getElementById('products');
+let q = query(collection(db, "products"), where("approved", "==", true));
+let snap = await getDocs(q);
+if (!snap.empty) {
+container.innerHTML = '';
+snap.forEach((docu) => {
+let p = docu.data();
+container.innerHTML += `
+<div class="product" data-cat="${p.cat}" data-name="${p.name.toLowerCase()} ${p.shopName? p.shopName.toLowerCase() : ''}">
+<img src="${p.image}">
+<h3>${p.name}</h3>
+<p style="font-size:11px;color:gray">Shop: ${p.shopName || 'Glomski Official'}</p>
+<p>₦${p.price.toLocaleString()}</p>
+<button onclick="addToCart(${p.price},'${p.name.replace(/'/g, "")}','${p.sellerId || 'glomski'}','${p.subaccount_code || ''}','${p.shopName || 'Glomski'}')">Add to Cart</button>
+</div>`;
+});
+} else {
+container.innerHTML = '<p style="text-align:center;padding:20px">No products yet. Be first seller!</p>';
+}
+</script>
+</body>
+  </html>
