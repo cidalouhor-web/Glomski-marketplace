@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin - Marketplace</title>
+<style>
+body { font-family: Arial; padding: 15px; background: #f5f5f5; }
+.box { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 12px; }
+input, select { width: 100%; padding: 10px; margin: 6px 0; border-radius: 8px; border: 1px solid #ddd; box-sizing: border-box; }
+button { padding: 10px 15px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin: 3px; }
+.card { border: 1px solid #ddd; padding: 12px; border-radius: 8px; margin-bottom: 10px; }
+</style>
+</head>
+<body>
+<div class="box">
+<div id="lock"><h2>Admin Login</h2><input id="pass" type="password" placeholder="glomski123"><button onclick="unlock()" style="background:black;color:white">Unlock</button></div>
+<div id="panel" style="display:none">
+<h1>Glomski Marketplace Admin</h1>
+<h2>Pending Sellers (Need Subaccount)</h2><div id="pendingSellers">Loading...</div><hr>
+<h2>Pending Products</h2><div id="pendingProducts">Loading...</div><hr>
+<h2>Withdrawal Requests</h2><div id="withdrawals">Loading...</div><hr>
+<h2>Add Official Product (Glomski)</h2>
+<input id="pname" placeholder="Product Name"><input id="pprice" type="number" placeholder="Price"><input id="pimage" placeholder="Image URL"><select id="pcat"><option value="phones">Phones</option><option value="gadgets">Gadgets</option><option value="perfumes">Perfumes</option><option value="clothes">Clothes</option><option value="appliances">Appliances</option></select><button onclick="addOfficialProduct()" style="background:gold">Add Official Product</button><hr>
+<h2>All Orders & Commission</h2><div id="orders"></div>
+</div>
+</div>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+import { getFirestore, collection, addDoc, getDocs, query, where, orderBy, limit, doc, setDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+const firebaseConfig = {
+apiKey: "AIzaSyC_HDjcKbNMsQm6UqbM0zEdwJ1yljMzKVM",
+authDomain: "glomski-store.firebaseapp.com",
+projectId: "glomski-store",
+storageBucket: "glomski-store.firebasestorage.app",
+messagingSenderId: "610377053840",
+appId: "1:610377053840:web:bb7651bd461b6dc8c88a15"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+window.unlock = () => {
+if(document.getElementById('pass').value == 'glomski123') {
+document.getElementById('lock').style.display='none';
+document.getElementById('panel').style.display='block';
+loadAll();
+} else { alert('Wrong'); }
+}
+async function loadAll() { loadPendingSellers(); loadPendingProducts(); loadOrders(); loadWithdrawals(); }
+async function loadPendingSellers() {
+let snap = await getDocs(collection(db, "sellers_pending"));
+let html='';
+snap.forEach(d => {
+let s=d.data();
+if(s.status=='pending') {
+html+=`<div class="card"><b>${s.shopName}</b> - ${s.email}<br>Bank: ${s.bank} ${s.accountNo} - ${s.accountName}<br><small>Ref: ${s.ref}</small><br><input id="sub_${d.id}" placeholder="Enter Paystack Subaccount Code ACCT_..."><button onclick="approveSeller('${d.id}','${s.email}')" style="background:gold">Approve Seller</button></div>`;
+}
+});
+document.getElementById('pendingSellers').innerHTML = html || 'No pending sellers';
+}
+window.approveSeller = async function(pendingId, email) {
+let subCode = document.getElementById('sub_'+pendingId).value;
+if(!subCode) { alert('First go Paystack Dashboard -> Subaccounts -> Create Subaccount for this seller, copy ACCT_... code and paste here'); return; }
+let snap = await getDocs(query(collection(db, "sellers_pending"), where("email","==",email)));
+let data = snap.docs[0].data();
+await setDoc(doc(db, "sellers", pendingId), {
+uid: pendingId,
+shopName: data.shopName,
+email: data.email,
+phone: data.phone,
+bank: data.bank,
+accountNo: data.accountNo,
+accountName: data.accountName,
+subaccount_code: subCode,
+balance: 0,
+approved: true,
+time: Date.now()
+});
+await updateDoc(doc(db, "sellers_pending", pendingId), { status: 'approved' });
+alert('Seller approved!');
+loadPendingSellers();
+}
+async function loadPendingProducts() {
+let q = query(collection(db, "products"), where("approved","==",false));
+let snap = await getDocs(q);
+let html='';
+snap.forEach(d => {
+let p=d.data();
+html+=`<div class="card"><img src="${p.image}" style="width:60px;height:60px;object-fit:cover"><b>${p.name}</b> - ₦${p.price} - Shop: ${p.shopName}<br><button onclick="approveProduct('${d.id}')" style="background:green;color:white">Approve</button><button onclick="rejectProduct('${d.id}')" style="background:red;color:white">Reject</button></div>`;
+});
+document.getElementById('pendingProducts').innerHTML = html || 'No pending products';
+}
+window.approveProduct = async function(id) { await updateDoc(doc(db, "products", id), { approved: true }); loadPendingProducts(); }
+window.rejectProduct = async function(id) { await deleteDoc(doc(db, "products", id)); loadPendingProducts(); }
+async function loadOrders() {
+let q = query(collection(db, "orders"), orderBy("time","desc"), limit(30));
+let snap = await getDocs(q);
+let html='';
+let totalCommission=0;
+snap.forEach(d => {
+let o=d.data();
+totalCommission+=o.commission || 0;
+html+=`<div style="border-bottom:1px solid #eee;padding:8px">₦${o.total} - Seller gets ₦${o.sellerAmount} - You get ₦${o.commission} - ${o.buyerName || ''}</div>`;
+});
+document.getElementById('orders').innerHTML = `Total Commission Earned: ₦${totalCommission.toLocaleString()}<br><br>` + html;
+}
+async function loadWithdrawals() {
+let snap = await getDocs(query(collection(db, "withdrawals"), where("status","==","pending")));
+let html='';
+snap.forEach(d => {
+let w=d.data();
+html+=`<div class="card"><b>${w.shopName}</b> - ₦${w.amount}<br>Bank: ${w.bank} ${w.accountNo}<br><button onclick="payWithdrawal('${d.id}')" style="background:green;color:white">Mark as Paid</button></div>`;
+});
+document.getElementById('withdrawals').innerHTML = html || 'No withdrawals';
+}
+window.payWithdrawal = async function(id) { await updateDoc(doc(db, "withdrawals", id), { status: 'paid' }); alert('Marked paid - Go pay seller via bank transfer'); loadWithdrawals(); }
+window.addOfficialProduct = async function() {
+let name=document.getElementById('pname').value;
+let price=parseInt(document.getElementById('pprice').value);
+let image=document.getElementById('pimage').value;
+let cat=document.getElementById('pcat').value;
+await addDoc(collection(db, "products"), { name: name, price: price, image: image, cat: cat, sellerId: 'glomski', shopName: 'Glomski Official', subaccount_code: '', approved: true, time: Date.now() });
+alert('Added!');
+}
+</script>
+</body>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                           </html>
