@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Shop - Glomski</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<header><h1>GLOMSKI</h1><div><a href="index.html">Home</a> <a href="admin.html">+ Add</a> <a href="cart.html">Cart</a></div></header>
+<h2 style="padding:20px">All Products</h2>
+<div class="products" id="products"></div>
+<script>
+let defaultProducts=[
+{name:"Product 1",price:"5000",desc:"Good quality"},
+{name:"Product 2",price:"7500",desc:"Good quality"},
+{name:"Product 3",price:"10000",desc:"Good quality"}
+];
+function loadProducts(){
+let saved=JSON.parse(localStorage.getItem('glomski_products')||'[]');
+let all=[...defaultProducts,...saved];
+document.getElementById('products').innerHTML=all.map(p=>`
+<div class="card"><h3>${p.name}</h3><p>₦${p.price}</p><p style="font-size:12px">${p.desc||''}</p><button onclick="alert('Added')" style="padding:8px;background:#111;color:#fff;border:none">Add to Cart</button></div>
+`).join('');
+}
+loadProducts();
+</script>
+</body>
+</html>
