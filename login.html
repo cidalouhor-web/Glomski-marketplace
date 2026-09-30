@@ -1,50 +1,79 @@
 <!DOCTYPE html>
 <html>
-<head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Login - Glomski</title><link rel="stylesheet" href="style.css"></head>
+<head>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Glomski Login</title>
+<style>
+body{font-family:sans-serif;background:#f5f5f5;margin:0}
+header{background:#000;color:#fff;padding:15px;text-align:center}
+.box{max-width:360px;margin:40px auto;background:#fff;padding:25px;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,0.1)}
+input{width:100%;padding:12px;margin:8px 0;box-sizing:border-box;border:1px solid #ddd;border-radius:6px}
+button{width:100%;padding:12px;background:#000;color:#fff;border:none;margin-top:10px;border-radius:6px;font-weight:bold;cursor:pointer}
+a{color:#000;font-weight:bold}
+</style>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+</head>
 <body>
-<header><h1>GLOMSKI</h1><a href="index.html">Home</a></header>
-
-<div style="max-width:350px;margin:50px auto;padding:20px;border:1px solid #ddd" id="box">
-<h2 id="title">Create Account</h2>
-<input id="name" placeholder="Full Name" style="width:100%;padding:10px;margin:5px 0">
-<input id="email" placeholder="Email" style="width:100%;padding:10px;margin:5px 0">
-<input id="pass" type="password" placeholder="Password" style="width:100%;padding:10px;margin:5px 0">
-<button onclick="handleAuth()" id="btn" style="width:100%;padding:12px;background:#111;color:#fff;margin-top:10px">Create Account</button>
-<p style="text-align:center;margin-top:15px;font-size:14px"><span id="switchText">Already get account?</span> <a href="#" onclick="toggleForm()" id="switchLink">Login</a></p>
-<p id="msg" style="color:green;text-align:center"></p>
+<header><h1 style="margin:0">GLOMSKI</h1></header>
+<div class="box">
+<h3 id="title" style="text-align:center">Create Account</h3>
+<input id="email" type="email" placeholder="Email e.g. you@gmail.com">
+<input id="pass" type="password" placeholder="Password (min 6 chars)">
+<button onclick="doAuth()" id="btn">Create Account</button>
+<p style="text-align:center;font-size:14px;margin-top:15px"><span id="txt">Already have account?</span> <a href="#" onclick="toggle()">Login here</a></p>
+<p id="msg" style="text-align:center;color:#d00;font-size:13px"></p>
+<p style="text-align:center;margin-top:10px"><a href="shop.html" style="font-weight:normal;font-size:13px">Skip → Continue as Guest</a></p>
 </div>
 
 <script>
-let isLogin=false;
-function toggleForm(){
-isLogin=!isLogin;
-document.getElementById('title').innerText=isLogin?'Login':'Create Account';
-document.getElementById('btn').innerText=isLogin?'Login':'Create Account';
-document.getElementById('switchText').innerText=isLogin?'No account yet?':'Already get account?';
-document.getElementById('switchLink').innerText=isLogin?'Create Account':'Login';
-document.getElementById('name').style.display=isLogin?'none':'block';
-}
-function handleAuth(){
-let n=document.getElementById('name').value;
-let e=document.getElementById('email').value;
-let p=document.getElementById('pass').value;
-if(!e||!p)return alert('Fill email and password');
-if(!isLogin && !n)return alert('Fill your name');
+const firebaseConfig = {
+  apiKey: "AIzaSyC_HDjcKbNMsQm6UqbM0zEdwJ1yljMzKVM",
+  authDomain: "glomski-store.firebaseapp.com",
+  databaseURL: "https://glomski-store-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "glomski-store",
+  storageBucket: "glomski-store.firebasestorage.app",
+  messagingSenderId: "610377053840",
+  appId: "1:610377053840:web:91a183356af8a209c88a15"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
 
-let users=JSON.parse(localStorage.getItem('glomski_users')||'[]');
-if(isLogin){
-let found=users.find(u=>u.email===e && u.pass===p);
-if(found){localStorage.setItem('glomski_current',JSON.stringify(found));alert('Login success!');window.location='shop.html';}
-else{alert('Wrong email or password');}
-}else{
-if(users.find(u=>u.email===e))return alert('Email don already exist, login');
-users.push({name:n,email:e,pass:p});
-localStorage.setItem('glomski_users',JSON.stringify(users));
-localStorage.setItem('glomski_current',JSON.stringify({name:n,email:e}));
-document.getElementById('msg').innerText='Account created! Now you fit login.';
-toggleForm();
+let isLogin=false;
+function toggle(){
+ isLogin=!isLogin;
+ document.getElementById('title').innerText=isLogin?'Login to Account':'Create Account';
+ document.getElementById('btn').innerText=isLogin?'Login':'Create Account';
+ document.getElementById('txt').innerText=isLogin?'No account yet?':'Already have account?';
+ document.getElementById('msg').innerText='';
 }
+function doAuth(){
+ let e=document.getElementById('email').value.trim();
+ let p=document.getElementById('pass').value.trim();
+ if(!e||!p){alert('Fill email and password');return;}
+ if(p.length<6){alert('Password must be 6 characters');return;}
+ document.getElementById('msg').style.color='#000';
+ document.getElementById('msg').innerText='Loading... please wait';
+ if(isLogin){
+   auth.signInWithEmailAndPassword(e,p).then(()=>{
+     document.getElementById('msg').style.color='green';
+     document.getElementById('msg').innerText='Login success! Going to shop...';
+     setTimeout(()=>{window.location='shop.html';},1000);
+   }).catch(err=>{
+     document.getElementById('msg').style.color='red';
+     document.getElementById('msg').innerText=err.message;
+   });
+ }else{
+   auth.createUserWithEmailAndPassword(e,p).then(()=>{
+     document.getElementById('msg').style.color='green';
+     document.getElementById('msg').innerText='Account created! Now click Login here';
+     setTimeout(()=>{toggle();},1500);
+   }).catch(err=>{
+     document.getElementById('msg').style.color='red';
+     document.getElementById('msg').innerText=err.message;
+   });
+ }
 }
 </script>
 </body>
-  </html>
+</html>
